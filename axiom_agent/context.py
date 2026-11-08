@@ -1,5 +1,6 @@
 """Bounded context and optional, owner-authored additions."""
 from pathlib import Path
+import stat
 
 from .doctrine import COMPACT_CAP, FULL_CAP, FOOTER, Doctrine, article_state, compact_context
 
@@ -16,11 +17,13 @@ def capped(text: str, cap: int, note: str) -> str:
 def owner_additions(home: Path, cap: int | None = None) -> str:
     path = home / 'axiom-agent' / 'doctrine.local.md'
     try:
+        if not stat.S_ISREG(path.lstat().st_mode):
+            raise ValueError('Non-regular additions')
         with path.open(encoding='utf-8') as source:
             text = source.read(cap + 1) if cap is not None else source.read()
     except FileNotFoundError:
         return ''
-    except (OSError, UnicodeError):
+    except (OSError, UnicodeError, ValueError):
         return '\n[Owner additions unavailable: unreadable file.]'
     if not text:
         return ''

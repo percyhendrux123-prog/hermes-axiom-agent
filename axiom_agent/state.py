@@ -57,7 +57,7 @@ def _installed(home: Path) -> tuple[set[str], bool]:
                 if not isinstance(data, dict) or not isinstance(data.get('name'), str):
                     raise ValueError('Invalid metadata')
                 found.add(data['name'])
-        except (OSError, UnicodeError, ValueError, yaml.YAMLError, RecursionError):
+        except (OSError, UnicodeError, ValueError, yaml.YAMLError, RecursionError, OverflowError):
             complete = False
     return found, complete
 

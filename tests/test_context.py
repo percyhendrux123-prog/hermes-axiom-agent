@@ -33,6 +33,9 @@ def test_oversized_owner_file_has_a_separate_cap_including_note(tmp_path, text):
 
 
 def test_unreadable_owner_file_does_not_echo_private_errors(tmp_path, monkeypatch):
+    path = tmp_path / 'axiom-agent' / 'doctrine.local.md'
+    path.parent.mkdir()
+    path.write_text('local additions', encoding='utf-8')
     def denied(*args, **kwargs):
         raise PermissionError('sensitive diagnostic')
     monkeypatch.setattr(Path, 'open', denied)
@@ -74,3 +77,22 @@ def test_owner_invalid_utf8_is_unreadable(tmp_path, raw):
     path.parent.mkdir()
     path.write_bytes(raw)
     assert 'unreadable' in module().owner_additions(tmp_path)
+
+
+@pytest.mark.parametrize('kind', ['directory', 'symlink', 'fifo'])
+def test_owner_nonregular_file_is_unreadable_without_opening(tmp_path, monkeypatch, kind):
+    import os
+    path = tmp_path / 'axiom-agent' / 'doctrine.local.md'
+    path.parent.mkdir()
+    if kind == 'directory':
+        path.mkdir()
+    elif kind == 'symlink':
+        target = tmp_path / 'unrelated.md'
+        target.write_text('Never inject this file.', encoding='utf-8')
+        path.symlink_to(target)
+    else:
+        os.mkfifo(path)
+    def unexpected(*args, **kwargs):
+        pytest.fail('must reject before opening a special file')
+    monkeypatch.setattr(Path, 'open', unexpected)
+    assert 'unreadable' in module().owner_additions(tmp_path, cap=800)
