@@ -26,7 +26,7 @@ def test_context_caps_and_article_parity_for_every_runtime_combination(tmp_path)
 
 
 def test_runtime_imports_and_operations_stay_read_only():
-    allowed_imports = {'dataclasses', 'pathlib', 're', 'stat', 'yaml', 'hermes_constants'}
+    allowed_imports = {'dataclasses', 'pathlib', 're', 'stat', 'yaml', 'hermes_yaml', 'hermes_constants'}
     forbidden_calls = {'write_text', 'write_bytes', 'mkdir', 'unlink', 'rename', 'replace',
                        'register_tool', 'register_middleware', 'set_config', 'dispatch_tool',
                        'system', 'popen', 'eval', 'exec'}
@@ -55,6 +55,38 @@ def test_catalog_is_a_draft_with_only_the_registered_capabilities():
     assert 'enforces nothing itself' in entry['description'].lower()
     assert entry['capabilities'] == {'provides_tools': [], 'provides_hooks': ['pre_llm_call'],
                                      'provides_middleware': [], 'requires_env': []}
+
+
+def test_manifest_declares_no_python_dependencies():
+    # A fresh HERMES_HOME may share a dependency home that never admits extra packages;
+    # inside Hermes the plugin parses YAML with the core hermes_yaml module instead.
+    manifest = yaml.safe_load((ROOT / 'plugin.yaml').read_text(encoding='utf-8'))
+    assert 'python_dependencies' not in manifest
+    assert 'pip_dependencies' not in manifest
+    assert not (ROOT / 'pyproject.toml').exists()
+
+
+def test_state_prefers_hermes_yaml_when_hermes_provides_it(monkeypatch, tmp_path):
+    import importlib
+    import sys
+    import types
+    calls = []
+    fake = types.ModuleType('hermes_yaml')
+    fake.YAMLError = yaml.YAMLError
+    fake.safe_load = lambda text: calls.append(text) or yaml.safe_load(text)
+    monkeypatch.setitem(sys.modules, 'hermes_yaml', fake)
+    import axiom_agent.state as state
+    try:
+        state = importlib.reload(state)
+        assert state.yaml is fake
+        folder = tmp_path / 'plugins' / 'tripwire'
+        folder.mkdir(parents=True)
+        (folder / 'plugin.yaml').write_text('name: tripwire\n', encoding='utf-8')
+        assert state._installed(tmp_path) == ({'tripwire'}, True)
+        assert calls
+    finally:
+        monkeypatch.delitem(sys.modules, 'hermes_yaml')
+        importlib.reload(state)
 
 
 def test_readme_sample_is_the_real_zero_enforcer_report(tmp_path):

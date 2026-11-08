@@ -7,7 +7,6 @@ license: MIT
 api_version: 1
 provides_tools: []
 provides_hooks: [pre_llm_call]
-python_dependencies: ["PyYAML>=6,<7"]
 config_schema:
   inject:
     type: bool

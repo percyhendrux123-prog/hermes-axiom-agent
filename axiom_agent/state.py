@@ -3,7 +3,10 @@ from dataclasses import dataclass
 from pathlib import Path
 import stat
 
-import yaml
+try:  # Hermes core ships a safe YAML loader; the plugin needs no extra dependency inside Hermes.
+    import hermes_yaml as yaml
+except ImportError:  # outside Hermes (tests, tooling)
+    import yaml
 
 
 ENFORCERS = ('standing', 'hermes-axioma', 'tripwire', 'handydandy', 'hermes-gatekeeper')
