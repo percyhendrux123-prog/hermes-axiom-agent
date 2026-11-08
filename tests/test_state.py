@@ -74,9 +74,11 @@ def test_bad_metadata_is_unknown_not_absent(tmp_path, metadata):
 
 
 def test_unreadable_inventory_preserves_positive_runtime_evidence(tmp_path, monkeypatch):
+    import os
+    (tmp_path / 'plugins').mkdir()
     def denied(*args, **kwargs):
         raise PermissionError('private error')
-    monkeypatch.setattr(Path, 'iterdir', denied)
+    monkeypatch.setattr(os, 'listdir', denied)
     states = module().read_states(Context({'tripwire'}), tmp_path)
     assert states['tripwire'].installed is True
     assert states['tripwire'].enabled is True

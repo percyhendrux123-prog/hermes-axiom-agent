@@ -81,7 +81,14 @@ including pip/bundled plugins. An inactive pip/bundled install cannot be
 inventoried this way; `not found` means not found in the user-plugin metadata,
 not proof of absence everywhere. Unreadable, malformed, non-regular or oversized
 metadata is reported conservatively as unknown. Manifest reads are limited to
-65,536 characters each. No config file is rewritten and no directory is created.
+65,536 characters each, and at most 1,024 directory entries are inspected per
+report. A symlinked plugin directory (for example a development checkout) is
+followed, as Hermes follows it; a symlinked manifest file is never read. Every
+file is checked on the opened descriptor, so a swap between check and read is
+refused. Manifests that use YAML anchors, aliases or merge keys, or more than 256
+flow collections, are reported as unknown without being parsed. Inside Hermes,
+manifests are parsed with Hermes' own safe YAML loader, so the plugin declares
+no Python dependencies. No config file is rewritten and no directory is created.
 
 ### Configuration
 
@@ -125,8 +132,9 @@ articles. They do not change enforcement counts or acquire an ENFORCED label.
 Their entire injected section, including its label and truncation note, has a
 separate 800-character cap. `/doctrine show` displays the owner file without the
 context cap; `show n` selects only canonical articles I–IX. A missing or empty
-file is fine. An unreadable or non-regular file (including a symbolic link)
-produces a brief notice without exposing error details. Keep secrets and private
+file is fine. An unreadable or non-regular file (including a symbolic link, or an
+`axiom-agent` folder that is a symbolic link) produces a brief notice without
+exposing error details. Keep secrets and private
 material out of additions: the text is sent
 to the model as context by Hermes.
 

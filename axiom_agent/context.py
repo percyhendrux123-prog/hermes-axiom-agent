@@ -1,7 +1,7 @@
 """Bounded context and optional, owner-authored additions."""
 from pathlib import Path
-import stat
 
+from . import files
 from .doctrine import COMPACT_CAP, FULL_CAP, FOOTER, Doctrine, article_state, compact_context
 
 
@@ -15,16 +15,19 @@ def capped(text: str, cap: int, note: str) -> str:
 
 
 def owner_additions(home: Path, cap: int | None = None) -> str:
-    path = home / 'axiom-agent' / 'doctrine.local.md'
+    # Neither the axiom-agent folder nor the file may be a symbolic link; HERMES_HOME itself may be.
+    root = folder = None
     try:
-        if not stat.S_ISREG(path.lstat().st_mode):
-            raise ValueError('Non-regular additions')
-        with path.open(encoding='utf-8') as source:
-            text = source.read(cap + 1) if cap is not None else source.read()
+        root = files.open_dir(home, follow=True)
+        folder = files.open_dir('axiom-agent', root)
+        text = files.read_text(folder, 'doctrine.local.md', cap)
     except FileNotFoundError:
         return ''
     except (OSError, UnicodeError, ValueError):
         return '\n[Owner additions unavailable: unreadable file.]'
+    finally:
+        files.close(folder)
+        files.close(root)
     if not text:
         return ''
     text = '\nOwner additions:\n' + text

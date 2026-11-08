@@ -36,9 +36,14 @@ def test_unreadable_owner_file_does_not_echo_private_errors(tmp_path, monkeypatc
     path = tmp_path / 'axiom-agent' / 'doctrine.local.md'
     path.parent.mkdir()
     path.write_text('local additions', encoding='utf-8')
-    def denied(*args, **kwargs):
-        raise PermissionError('sensitive diagnostic')
-    monkeypatch.setattr(Path, 'open', denied)
+    import os
+    from axiom_agent import files
+    real_open = os.open
+    def denied(name, flags, *args, **kwargs):
+        if name == 'doctrine.local.md':
+            raise PermissionError('sensitive diagnostic')
+        return real_open(name, flags, *args, **kwargs)
+    monkeypatch.setattr(files.os, 'open', denied)
     note = module().owner_additions(tmp_path, cap=800)
     assert 'unreadable' in note
     assert 'sensitive diagnostic' not in note

@@ -26,7 +26,8 @@ def test_context_caps_and_article_parity_for_every_runtime_combination(tmp_path)
 
 
 def test_runtime_imports_and_operations_stay_read_only():
-    allowed_imports = {'dataclasses', 'pathlib', 're', 'stat', 'yaml', 'hermes_yaml', 'hermes_constants'}
+    allowed_imports = {'dataclasses', 'pathlib', 're', 'stat', 'yaml', 'hermes_yaml', 'hermes_constants',
+                       'os', 'codecs', 'errno'}
     forbidden_calls = {'write_text', 'write_bytes', 'mkdir', 'unlink', 'rename', 'replace',
                        'register_tool', 'register_middleware', 'set_config', 'dispatch_tool',
                        'system', 'popen', 'eval', 'exec'}
