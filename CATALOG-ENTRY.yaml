@@ -1,0 +1,16 @@
+# Draft only: replace TBD with the reviewed full commit before submission.
+name: hermes-axiom-agent
+title: Axiom Agent
+repo: https://github.com/percyhendrux123-prog/hermes-axiom-agent
+sha: TBD
+version: "0.1.0"
+description: "Adds the nine-article Axiom Doctrine and reports enabled enforcer plugins. Enforces nothing itself. Reads optional owner additions and user-plugin manifest metadata; makes no external calls or writes."
+maintainer: percyhendrux123-prog
+tier: community
+category: automation
+platforms: []
+capabilities:
+  provides_tools: []
+  provides_hooks: [pre_llm_call]
+  provides_middleware: []
+  requires_env: []
