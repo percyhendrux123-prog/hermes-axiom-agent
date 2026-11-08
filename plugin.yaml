@@ -1,0 +1,20 @@
+name: hermes-axiom-agent
+title: Axiom Agent
+version: "0.1.0"
+description: "Adds the nine-article Axiom Doctrine and reports enabled enforcer plugins. Enforces nothing itself."
+author: Percy Keith Stewart
+license: MIT
+api_version: 1
+provides_tools: []
+provides_hooks: [pre_llm_call]
+python_dependencies: ["PyYAML>=6,<7"]
+config_schema:
+  inject:
+    type: bool
+    default: true
+    description: "Append doctrine context before each model turn."
+  form:
+    type: str
+    choices: [compact, full]
+    default: compact
+    description: "Compact is capped at 1800 characters; full at 4000. Owner additions have a separate 800-character cap."
