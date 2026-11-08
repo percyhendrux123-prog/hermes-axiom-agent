@@ -3,11 +3,6 @@ from dataclasses import dataclass
 from pathlib import Path
 import re
 
-try:  # Hermes core ships a safe YAML loader; the plugin needs no extra dependency inside Hermes.
-    import hermes_yaml as yaml
-except ImportError:  # outside Hermes (tests, tooling)
-    import yaml
-
 from . import files
 
 
@@ -15,12 +10,12 @@ ENFORCERS = ('standing', 'hermes-axioma', 'tripwire', 'handydandy', 'hermes-gate
 ALIASES = {'standing': ('standing', 'hermes-standing')}
 METADATA_CAP = 65536
 ENTRY_CAP = 1024  # directory entries inspected per inventory, across both levels
-FLOW_CAP = 256  # flow-collection openers allowed in one manifest
-# Anchors, aliases and merge keys are the YAML features whose cost can exceed the input size.
-# They can only start a node: at a line start, after "key:", "- " or "? ", or inside a flow
-# collection. Quoted scalars and comments are blanked first so prose like *markdown* passes.
-_QUOTED_OR_COMMENT = re.compile(r'"(?:[^"\\\n]|\\.)*"|\'(?:[^\'\n]|\'\')*\'|(?:^|(?<=\s))#[^\n]*', re.M)
-_EXPANSION = re.compile(r'(?:^[ \t]*|[:?-][ \t]+|[\[{,][ \t]*)(?:[&*]\S|<<[ \t]*:)', re.M)
+# Only the top-level ``name:`` line is read; no YAML document is ever constructed, so anchors,
+# aliases, merge keys and nesting cost nothing. A name must be a plain plugin identifier.
+_NAME_LINE = re.compile(r'^name[ \t]*:(.*)$', re.M)
+_PLUGIN_NAME = re.compile(r'[A-Za-z0-9][A-Za-z0-9._-]{0,127}')
+_PLAIN_VALUE = re.compile(r'[ \t]*(\S+?)[ \t]*(?:[ \t]#.*)?')
+_QUOTED_VALUE = re.compile(r'[ \t]*(["\'])(.*?)\1[ \t]*(?:#.*)?')
 
 
 class _OverBudget(Exception):
@@ -33,9 +28,18 @@ class PluginState:
     enabled: bool | None
 
 
-def _within_budget(text: str) -> bool:
-    plain = _QUOTED_OR_COMMENT.sub('""', text)
-    return not _EXPANSION.search(plain) and plain.count('[') + plain.count('{') <= FLOW_CAP
+def _top_level_name(text: str) -> str:
+    """The plugin name from a manifest's top-level ``name:`` line; ValueError if unclear."""
+    text = text.removeprefix('\ufeff')
+    lines = _NAME_LINE.findall(text)
+    if len(lines) != 1:
+        raise ValueError('Missing or repeated name')
+    value = lines[0]
+    match = _QUOTED_VALUE.fullmatch(value) or _PLAIN_VALUE.fullmatch(value)
+    name = match and match.group(match.lastindex)
+    if not name or not _PLUGIN_NAME.fullmatch(name):
+        raise ValueError('Invalid name')
+    return name
 
 
 def _manifest_name(folder: int) -> str | None:
@@ -47,12 +51,7 @@ def _manifest_name(folder: int) -> str | None:
             continue
         if len(text) > METADATA_CAP:
             raise ValueError('Oversized metadata')
-        if not _within_budget(text):
-            raise ValueError('Metadata outside the parsing budget')
-        data = yaml.safe_load(text)
-        if not isinstance(data, dict) or not isinstance(data.get('name'), str):
-            raise ValueError('Invalid metadata')
-        return data['name']
+        return _top_level_name(text)
     return None
 
 
@@ -110,7 +109,7 @@ def _installed(home: Path) -> tuple[set[str], bool]:
                         files.close(nested)
                     if name is not None:
                         found.add(name)
-            except (OSError, UnicodeError, ValueError, yaml.YAMLError, RecursionError, OverflowError):
+            except (OSError, UnicodeError, ValueError):
                 complete = False
             finally:
                 files.close(folder)

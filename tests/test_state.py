@@ -63,7 +63,7 @@ def test_probe_errors_are_unknown_not_enforced(tmp_path):
 
 
 @pytest.mark.parametrize('metadata', ['[', 'name: [invalid]', 'a' * 70000, '\u001b',
-                                    'name: unrelated\nversion: 1' + ':00' * 180 + '.0\n'])
+                                    'name: one\nname: two\n', 'name:\n  unrelated\n'])
 def test_bad_metadata_is_unknown_not_absent(tmp_path, metadata):
     folder = tmp_path / 'plugins' / 'sample'
     folder.mkdir(parents=True)

@@ -7,6 +7,6 @@
 - Report loaded, enabled enforcers separately from advice-only articles.
 - Read optional owner additions with a separate injection cap.
 - Register no tools, approval hooks or middleware; perform no writes or external calls.
-- Declare no Python dependencies; inside Hermes, manifest metadata is parsed with the core `hermes_yaml` loader.
-- Read files without following symlinks below HERMES_HOME (plugin directory symlinks excepted), check every read on the opened descriptor, refuse YAML anchors/aliases/merge keys before parsing, and bound inventory work.
-- Close every directory descriptor on failure paths; count inventory entries while scanning; match YAML anchors only where a node can start; degrade to unknown on platforms without POSIX descriptor support (catalog: macOS, Linux).
+- Declare no Python dependencies; read only each plugin manifest's top-level `name:` line, never a full YAML document.
+- Read files without following symlinks below HERMES_HOME (plugin directory symlinks excepted), check each read on the opened descriptor, close every descriptor on every path, and bound inventory work.
+- Support macOS and Linux; where POSIX descriptor support is missing, report owner additions unavailable and installed state unknown.

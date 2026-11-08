@@ -87,10 +87,10 @@ metadata is reported conservatively as unknown. Manifest reads are limited to
 report. A symlinked plugin directory (for example a development checkout) is
 followed, as Hermes follows it; a symlinked manifest file is never read. Every
 file is checked on the opened descriptor, so a swap between check and read is
-refused. Manifests that use YAML anchors, aliases or merge keys, or more than 256
-flow collections, are reported as unknown without being parsed. Inside Hermes,
-manifests are parsed with Hermes' own safe YAML loader, so the plugin declares
-no Python dependencies. No config file is rewritten and no directory is created.
+refused. Only each manifest's top-level `name:` line is read, and the name must
+be a plain plugin identifier; no YAML document is ever built, so anchors, aliases
+and nesting cost nothing. The plugin declares no Python dependencies. No config
+file is rewritten and no directory is created.
 
 ### Configuration
 

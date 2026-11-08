@@ -80,24 +80,50 @@ def test_fifo_manifest_is_unknown_without_blocking(tmp_path):
     assert state().read_states(Context(), tmp_path)['standing'].installed is None
 
 
+LAUGHS = 'a: &a [x, x, x, x, x, x, x, x, x]\n' + ''.join(
+    f'{chr(98 + i)}: &{chr(98 + i)} [' + ', '.join([f'*{chr(97 + i)}'] * 9) + ']\n' for i in range(9))
+
+
 @pytest.mark.parametrize('metadata', [
-    'a: &a [x, x]\nb: &b [*a, *a]\nc: [*b, *b]\nname: tripwire\n',
+    LAUGHS + 'name: tripwire\n',
     'base: &base {k: v}\nname: tripwire\nother:\n  <<: *base\n',
-    'name: tripwire\nnested: ' + '[' * 300 + ']' * 300 + '\n',
+    'name: tripwire\nnested: ' + '[' * 5000 + ']' * 5000 + '\n',
+    "junk: {p: don't, a: &a {x: x}, q: can't}\nname: tripwire\nmore: [*a, *a]\n",
 ])
-def test_yaml_expansion_features_are_refused_before_parsing(tmp_path, monkeypatch, metadata):
-    module = state()
+def test_yaml_expansion_costs_nothing_because_no_document_is_built(tmp_path, monkeypatch, metadata):
+    import sys
     (manifest_dir(tmp_path) / 'plugin.yaml').write_text(metadata, encoding='utf-8')
-    def unexpected(text):
-        pytest.fail('must refuse before parsing')
-    monkeypatch.setattr(module.yaml, 'safe_load', unexpected)
-    assert module.read_states(Context(), tmp_path)['tripwire'].installed is None
+    for name in ('yaml', 'hermes_yaml'):  # a YAML import here would fail the test
+        monkeypatch.setitem(sys.modules, name, None)
+    module = importlib.reload(state())
+    assert module.read_states(Context(), tmp_path)['tripwire'].installed is True
 
 
 def test_plain_descriptions_with_stars_or_ampersands_still_parse(tmp_path):
     (manifest_dir(tmp_path) / 'plugin.yaml').write_text(
         'name: tripwire\ndescription: "Q&A, 5 * 3, a & b"\n', encoding='utf-8')
     assert state().read_states(Context(), tmp_path)['tripwire'].installed is True
+
+
+@pytest.mark.parametrize('line,expected', [
+    ('name: tripwire', 'tripwire'),
+    ('name:   tripwire   # comment', 'tripwire'),
+    ('name: "hermes-standing"', 'hermes-standing'),
+    ("name: 'tripwire'  # quoted", 'tripwire'),
+    ('\ufeffname: tripwire', 'tripwire'),
+])
+def test_top_level_name_line_forms(line, expected):
+    assert state()._top_level_name(line + '\nversion: 1.0.0\n') == expected
+
+
+@pytest.mark.parametrize('text', [
+    'version: 1\n', 'name:\n  tripwire\n', 'name: |\n  tripwire\n', 'name: [tripwire]\n',
+    'name: tripwire\nname: standing\n', '  name: tripwire\n', 'name: "trip wire"\n',
+    'name: tripwire#x\n', 'name: *alias\n', '{name: tripwire}\n',
+])
+def test_unclear_names_are_refused(text):
+    with pytest.raises(ValueError):
+        state()._top_level_name(text)
 
 
 def test_inventory_work_is_bounded(tmp_path, monkeypatch):
@@ -165,18 +191,19 @@ def test_platform_without_descriptor_support_degrades_to_unknown(tmp_path, monke
     "name: tripwire\ndescription: '*quoted* & <<: fine'\n",
     'name: tripwire  # *not an alias*\n',
     'name: tripwire\ntags: [a&b, "x*y"]\n',
+    'name: tripwire\ndescription: |\n  Intro\n  *markdown* line\n',
 ])
-def test_ordinary_prose_is_not_mistaken_for_yaml_expansion(tmp_path, metadata):
+def test_ordinary_prose_is_never_misread(tmp_path, metadata):
     (manifest_dir(tmp_path) / 'plugin.yaml').write_text(metadata, encoding='utf-8')
     assert state().read_states(Context(), tmp_path)['tripwire'].installed is True
 
 
-@pytest.mark.parametrize('metadata', [
-    'name: tripwire\nref: *a\n',
-    'name: tripwire\nitems:\n  - *a\n',
-    'name: tripwire\nflow: [x, *a]\n',
-    'name: tripwire\nbase: &b x\n',
-])
-def test_node_position_anchors_and_aliases_are_refused(tmp_path, metadata):
-    (manifest_dir(tmp_path) / 'plugin.yaml').write_text(metadata, encoding='utf-8')
-    assert state().read_states(Context(), tmp_path)['tripwire'].installed is None
+def test_runtime_never_imports_a_yaml_parser():
+    import ast
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1]
+    for path in [root / '__init__.py', *sorted((root / 'axiom_agent').glob('*.py'))]:
+        for node in ast.walk(ast.parse(path.read_text(encoding='utf-8'))):
+            names = [a.name for a in node.names] if isinstance(node, ast.Import) else (
+                [node.module or ''] if isinstance(node, ast.ImportFrom) else [])
+            assert not any('yaml' in name for name in names), path.name
