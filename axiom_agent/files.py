@@ -11,6 +11,9 @@ _NOFOLLOW = getattr(os, 'O_NOFOLLOW', 0)
 _FILE_FLAGS = os.O_RDONLY | _NOFOLLOW | getattr(os, 'O_NONBLOCK', 0) | _CLOEXEC
 _DIR_FLAGS = os.O_RDONLY | getattr(os, 'O_DIRECTORY', 0) | _CLOEXEC
 _CHUNK = 65536
+# The no-follow guarantees need descriptor-relative opens and fd listing (POSIX: macOS, Linux).
+SUPPORTED = (os.open in os.supports_dir_fd and os.scandir in os.supports_fd
+             and os.stat in os.supports_fd and bool(_NOFOLLOW))
 
 
 class NotRegular(ValueError):
@@ -18,6 +21,8 @@ class NotRegular(ValueError):
 
 
 def _open(name, flags: int, parent: int | None) -> int:
+    if not SUPPORTED:
+        raise OSError(errno.ENOTSUP, 'Safe reads need POSIX descriptor support')
     try:
         return os.open(name, flags) if parent is None else os.open(name, flags, dir_fd=parent)
     except OSError as exc:
@@ -64,3 +69,14 @@ def read_text(parent: int, name: str, cap: int | None = None) -> str:
 def close(fd: int | None) -> None:
     if fd is not None:
         os.close(fd)
+
+
+def entries(fd: int, limit: int) -> list[str]:
+    """Up to ``limit + 1`` names in the directory *fd*; more than *limit* means over budget."""
+    names = []
+    with os.scandir(fd) as listing:  # scandir duplicates fd; the caller still owns it
+        for entry in listing:
+            names.append(entry.name)
+            if len(names) > limit:
+                break
+    return names

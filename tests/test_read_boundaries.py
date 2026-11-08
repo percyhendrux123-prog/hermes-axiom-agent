@@ -107,3 +107,76 @@ def test_inventory_work_is_bounded(tmp_path, monkeypatch):
         manifest_dir(tmp_path, f'p{index}')
     states = module.read_states(Context(), tmp_path)
     assert states['tripwire'].installed is None
+
+
+def open_fds():
+    return len(os.listdir('/dev/fd'))
+
+
+@pytest.mark.parametrize('failure', ['scandir', 'manifest', 'subdir'])
+def test_failed_inventory_never_leaks_descriptors(tmp_path, monkeypatch, failure):
+    from axiom_agent import files
+    module = state()
+    folder = manifest_dir(tmp_path)
+    (folder / 'plugin.yaml').write_text('name: tripwire\n', encoding='utf-8')
+    def denied(*args, **kwargs):
+        raise PermissionError('private error')
+    if failure == 'scandir':
+        monkeypatch.setattr(files.os, 'scandir', denied)
+    elif failure == 'manifest':
+        monkeypatch.setattr(module, '_manifest_name', denied)
+    else:
+        real = files.open_dir
+        monkeypatch.setattr(files, 'open_dir',
+                            lambda name, parent=None, follow=False: denied() if name == 'sample'
+                            else real(name, parent, follow))
+    before = open_fds()
+    for _ in range(50):
+        assert module.read_states(Context(), tmp_path)['tripwire'].installed is None
+    assert open_fds() == before
+
+
+def test_successful_inventory_and_owner_reads_never_leak_descriptors(tmp_path):
+    (manifest_dir(tmp_path, 'group') / 'tripwire').mkdir()
+    (tmp_path / 'plugins' / 'group' / 'tripwire' / 'plugin.yaml').write_text('name: tripwire\n', encoding='utf-8')
+    (tmp_path / 'axiom-agent').mkdir()
+    (tmp_path / 'axiom-agent' / 'doctrine.local.md').write_text('Owner rule.', encoding='utf-8')
+    before = open_fds()
+    for _ in range(50):
+        assert state().read_states(Context(), tmp_path)['tripwire'].installed is True
+        assert 'Owner rule.' in context().owner_additions(tmp_path, cap=800)
+    assert open_fds() == before
+
+
+def test_platform_without_descriptor_support_degrades_to_unknown(tmp_path, monkeypatch):
+    from axiom_agent import files
+    from axiom_agent.service import DoctrineService
+    (manifest_dir(tmp_path) / 'plugin.yaml').write_text('name: tripwire\n', encoding='utf-8')
+    (tmp_path / 'axiom-agent').mkdir()
+    (tmp_path / 'axiom-agent' / 'doctrine.local.md').write_text('Owner rule.', encoding='utf-8')
+    monkeypatch.setattr(files, 'SUPPORTED', False)
+    assert state().read_states(Context(), tmp_path)['tripwire'].installed is None
+    assert 'unreadable' in context().owner_additions(tmp_path, cap=800)
+    assert '0 of 9 enforced' in DoctrineService(Context(), lambda: tmp_path).command('')
+
+
+@pytest.mark.parametrize('metadata', [
+    'name: tripwire\ndescription: Use *markdown* for output.\n',
+    "name: tripwire\ndescription: '*quoted* & <<: fine'\n",
+    'name: tripwire  # *not an alias*\n',
+    'name: tripwire\ntags: [a&b, "x*y"]\n',
+])
+def test_ordinary_prose_is_not_mistaken_for_yaml_expansion(tmp_path, metadata):
+    (manifest_dir(tmp_path) / 'plugin.yaml').write_text(metadata, encoding='utf-8')
+    assert state().read_states(Context(), tmp_path)['tripwire'].installed is True
+
+
+@pytest.mark.parametrize('metadata', [
+    'name: tripwire\nref: *a\n',
+    'name: tripwire\nitems:\n  - *a\n',
+    'name: tripwire\nflow: [x, *a]\n',
+    'name: tripwire\nbase: &b x\n',
+])
+def test_node_position_anchors_and_aliases_are_refused(tmp_path, metadata):
+    (manifest_dir(tmp_path) / 'plugin.yaml').write_text(metadata, encoding='utf-8')
+    assert state().read_states(Context(), tmp_path)['tripwire'].installed is None

@@ -24,7 +24,9 @@ and action labels from that file; it does not maintain a separate wording source
 
 ## Install
 
-Requires Python 3.10+ and Hermes's documented plugin context APIs.
+Requires Python 3.10+ on macOS or Linux and Hermes's documented plugin context APIs.
+The safe-read guarantees need POSIX descriptor support; on a platform without it,
+owner additions are reported unavailable and installed state as unknown.
 Once the catalog entry is admitted:
 
 ```sh
@@ -153,11 +155,15 @@ These are separate plugins with their own limits and configuration:
 
 | Plugin | Install |
 |---|---|
-| [standing](https://hermes-agent.nousresearch.com/docs/plugins/standing) | `hermes plugins install standing` |
-| [hermes-axioma](https://hermes-agent.nousresearch.com/docs/plugins/hermes-axioma) | `hermes plugins install hermes-axioma` |
-| [tripwire](https://hermes-agent.nousresearch.com/docs/plugins/tripwire) | `hermes plugins install tripwire` |
-| [handydandy](https://hermes-agent.nousresearch.com/docs/plugins/handydandy) | `hermes plugins install handydandy` |
-| [hermes-gatekeeper](https://hermes-agent.nousresearch.com/docs/plugins/hermes-gatekeeper) | `hermes plugins install hermes-gatekeeper` |
+| [standing](https://github.com/percyhendrux123-prog/hermes-standing) | `hermes plugins install standing` |
+| [hermes-axioma](https://github.com/percyhendrux123-prog/hermes-axioma) | `hermes plugins install hermes-axioma` |
+| [tripwire](https://github.com/percyhendrux123-prog/hermes-tripwire) | `hermes plugins install tripwire` |
+| [handydandy](https://github.com/percyhendrux123-prog/hermes-handydandy) | `hermes plugins install handydandy` |
+| [hermes-gatekeeper](https://github.com/percyhendrux123-prog/hermes-gatekeeper) | `hermes plugins install hermes-gatekeeper` |
+
+The install commands use catalog names. Until a plugin's catalog entry is
+admitted, install it from its repository instead, for example
+`hermes plugins install percyhendrux123-prog/hermes-standing`.
 
 Enable a plugin explicitly after installing it. This package never does so.
 
@@ -180,8 +186,7 @@ are not native Hermes validation: run validate and doctor with Hermes too, then
 exercise a model turn and `/doctrine` using a throwaway home, never a real one.
 Use invented data and keep local review output out of the public source tree.
 Changes to doctrine wording need explicit review; keep both copies identical.
-`CATALOG-ENTRY.yaml` is a draft: replace `sha: TBD` with the reviewed full commit
-before submitting it. Nothing in this repository publishes or updates itself.
+`CATALOG-ENTRY.yaml` pins the reviewed full commit submitted to the catalog. Nothing in this repository publishes or updates itself.
 
 ## License
 
