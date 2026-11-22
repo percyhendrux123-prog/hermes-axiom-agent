@@ -1,5 +1,7 @@
 # Axiom Agent
 
+> **Part of the seat**, a collection of Hermes plugins that work together: watch, decide, act, prove, hand off. This one covers **rules**: it names the rules and shows which are enforced. [See the whole collection](https://github.com/percyhendrux123-prog#the-seat-a-collection-of-hermes-plugins).
+
 Adds the nine-article Axiom Doctrine to each Hermes model turn.
 Reports which articles have a loaded, enabled enforcer and which are advice only.
 This plugin enforces nothing itself.
