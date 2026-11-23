@@ -1,0 +1,20 @@
+{
+  "name": "axiom-agent",
+  "displayName": "Axiom Agent",
+  "version": "0.1.0",
+  "description": "The nine-article Axiom Doctrine as Claude Code skills, plus a status report of which articles have an enabled enforcer plugin. Enforces nothing itself.",
+  "author": {
+    "name": "Deploy Axiom"
+  },
+  "homepage": "https://github.com/percyhendrux123-prog/hermes-axiom-agent",
+  "repository": "https://github.com/percyhendrux123-prog/hermes-axiom-agent",
+  "license": "MIT",
+  "keywords": [
+    "doctrine",
+    "rules",
+    "skills",
+    "approvals",
+    "governance"
+  ],
+  "icon": "./.claude-plugin/icon.png"
+}

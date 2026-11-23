@@ -169,6 +169,15 @@ admitted, install it from its repository instead, for example
 
 Enable a plugin explicitly after installing it. This package never does so.
 
+## Also for Claude Code
+
+The doctrine also ships as a skills-only Claude Code plugin in [`claude-plugin/axiom-agent`](claude-plugin/axiom-agent). Two skills carry the same doctrine text and report which articles have an enabled enforcer plugin. It has no hooks, scripts or servers, and it enforces nothing. It does not inject the doctrine on every turn the way the Hermes plugin does; the plugin README lists these gaps. It is separate from the Hermes plugin above and needs neither Hermes nor Python.
+
+```sh
+claude plugin marketplace add percyhendrux123-prog/hermes-axiom-agent
+claude plugin install axiom-agent@deploy-axiom-agent
+```
+
 ## Contributor path
 
 Work in a local checkout. `axiom_agent/doctrine.py` reads articles and extracts

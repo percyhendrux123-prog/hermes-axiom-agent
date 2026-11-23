@@ -1,0 +1,16 @@
+{
+  "name": "deploy-axiom-agent",
+  "owner": {
+    "name": "Deploy Axiom"
+  },
+  "metadata": {
+    "description": "Axiom Agent for Claude Code, from Deploy Axiom."
+  },
+  "plugins": [
+    {
+      "name": "axiom-agent",
+      "source": "./claude-plugin/axiom-agent",
+      "description": "The nine-article Axiom Doctrine as skills, with a status report of which articles have an enabled enforcer plugin. Enforces nothing itself."
+    }
+  ]
+}
